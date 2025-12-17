@@ -138,20 +138,28 @@ process.on('SIGTERM', () => {
 new Cron(appInstance)
 
 const port = parseInt(process.env.PORT || '3000', 10)
-const serverTimeout = parseInt(process.env.SERVER_TIMEOUT || '600000', 10) // 默认 10 分钟
+const serverTimeout = parseInt(process.env.SERVER_TIMEOUT || '600000', 10) // Default 10 minutes
 
-// 通过 Hono node server 的 Options 在创建时配置底层 Node server 的超时
+// Configure underlying Node server timeout via Hono node server Options
 const serverOptions: HonoNodeServerOptions = {
   fetch: app.fetch,
   port,
   serverOptions: {
-    // 整个请求生命周期超时（Node 18+ 的 requestTimeout）
-    requestTimeout: serverTimeout,
-    // 响应头发送后的超时
-    headersTimeout: serverTimeout,
-    // keep-alive 空闲连接超时，对应响应头里的 Keep-Alive: timeout=...
+    // keep-alive idle connection timeout, corresponds to Keep-Alive: timeout=... header
     keepAliveTimeout: serverTimeout
   }
 }
 
 const server = serve(serverOptions)
+
+// Manually set timeout options after creating server (compatible with different Node.js versions and type definitions)
+// These options are available in Node.js 18+ but type definitions may be incomplete
+if ('timeout' in server && typeof (server as any).timeout === 'number') {
+  (server as any).timeout = serverTimeout
+}
+if ('requestTimeout' in server && typeof (server as any).requestTimeout === 'number') {
+  (server as any).requestTimeout = serverTimeout
+}
+if ('headersTimeout' in server && typeof (server as any).headersTimeout === 'number') {
+  (server as any).headersTimeout = serverTimeout
+}
